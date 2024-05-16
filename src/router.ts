@@ -1,7 +1,10 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance } from 'fastify';
+import { basicRoute } from './routes/basic';
+import { login } from './routes/users/nested/login';
+import { sendMessage } from './routes/chat/sendMessage';
 
 export const router = async(fastify: FastifyInstance) => {
-    fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
-        return { message: 'Сервер работает' };
-    });
+    fastify.register(basicRoute, {prefix: '/'})
+    fastify.register(login)
+    fastify.register(sendMessage)
 }
