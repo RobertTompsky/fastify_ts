@@ -5,7 +5,10 @@ import {
     MessagesPlaceholder,
     SystemMessagePromptTemplate,
 } from "@langchain/core/prompts";
-import { BufferWindowMemory, ChatMessageHistory } from "langchain/memory";
+import { 
+    BufferWindowMemory, 
+    ChatMessageHistory 
+} from "langchain/memory";
 import { ChatOpenAI } from "@langchain/openai";
 import 'dotenv/config'
 import {
@@ -83,7 +86,8 @@ export const chatModel = new ChatOpenAI({
 })
 
 export const getAnswer = async (
-    messages: IMessage[]
+    messages: IMessage[], 
+    reply: FastifyReply
 ) => {
 
     const {
@@ -106,20 +110,25 @@ export const getAnswer = async (
         memory: chatMemory
     });
 
-    const result = await BufferHistoryChain.invoke({
+    await BufferHistoryChain.invoke({
         input: currContent,
         callbacks: [
             {
-              handleLLMNewToken(token: string) {
-                console.log({ token });
-              },
+                handleLLMNewToken(token: string) {
+                    // Write the token to the response stream
+                    reply.raw.write(token);
+                    console.log(token)
+                },
+                handleLLMEnd() {
+                    // End the response stream
+                    reply.raw.end();
+                },
+                handleError(error: Error) {
+                    console.error(error);
+                    reply.raw.write('data: Error occurred\n\n');
+                    reply.raw.end();
+                },
             },
-          ]
+        ]
     })
-
-    const responseBody: IResponseBody = {
-        response: result.response as string,
-    }
-
-    return responseBody
 }

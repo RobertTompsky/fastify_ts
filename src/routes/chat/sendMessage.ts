@@ -27,12 +27,16 @@ export const sendMessage =
                 const { messages } = request.body
 
                 try {
-                    const res = await getAnswer(messages)
-                    reply.code(200).send(res)
+                    reply.raw.setHeader('Content-Type', 'text/event-stream');
+                    reply.raw.setHeader('Cache-Control', 'no-cache');
+                    reply.raw.setHeader('Connection', 'keep-alive');
+                    reply.raw.setHeader('Access-Control-Allow-Origin', '*'); // Добавляем заголовок для CORS
+                    await getAnswer(messages, reply) 
+
                 } catch (error) {
                     console.log(error)
                     reply.code(500).send({
-                        error: error
+                        error: error.message
                     });
                 }
             }
