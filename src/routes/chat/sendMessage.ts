@@ -1,17 +1,26 @@
 import {
-    IMessage,
+    IRequestBody,
     getAnswer
 } from "@/chatGPT/getAnswer";
+import { Redis } from "@upstash/redis";
 import {
     FastifyInstance,
     FastifyReply,
     FastifyRequest
 } from "fastify";
-import fs from 'fs-extra'
 
-interface ChatRequestBody {
-    messages: IMessage[];
-}
+const HEADERS: { key: string, value: string }[] = [
+    { key: 'Content-Type', value: 'text/event-stream' },
+    { key: 'Cache-Control', value: 'no-cache' },
+    { key: 'Connection', value: 'keep-alive' },
+    { key: 'Access-Control-Allow-Origin', value: '*' }, // Добавляем заголовок для CORS
+];
+
+const setHeaders = (reply: FastifyReply) => {
+    HEADERS.forEach(header => {
+        reply.raw.setHeader(header.key, header.value);
+    });
+};
 
 export const sendMessage =
     async (fastify: FastifyInstance) => {
@@ -20,18 +29,13 @@ export const sendMessage =
             url: '/chat/send_message',
             handler: async (
                 request: FastifyRequest<{
-                    Body: ChatRequestBody
+                    Body: IRequestBody
                 }>,
                 reply: FastifyReply
             ) => {
-                const { messages } = request.body
-
                 try {
-                    reply.raw.setHeader('Content-Type', 'text/event-stream');
-                    reply.raw.setHeader('Cache-Control', 'no-cache');
-                    reply.raw.setHeader('Connection', 'keep-alive');
-                    reply.raw.setHeader('Access-Control-Allow-Origin', '*'); // Добавляем заголовок для CORS
-                    await getAnswer(messages, reply) 
+                    setHeaders(reply); // Добавляем заголовок для CORS
+                    await getAnswer(request.body, reply)
 
                 } catch (error) {
                     console.log(error)

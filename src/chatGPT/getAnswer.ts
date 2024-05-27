@@ -5,9 +5,9 @@ import {
     MessagesPlaceholder,
     SystemMessagePromptTemplate,
 } from "@langchain/core/prompts";
-import { 
-    BufferWindowMemory, 
-    ChatMessageHistory 
+import {
+    BufferWindowMemory,
+    ChatMessageHistory
 } from "langchain/memory";
 import { ChatOpenAI } from "@langchain/openai";
 import 'dotenv/config'
@@ -18,10 +18,19 @@ import {
 } from "@langchain/core/messages";
 import type { BaseMessage } from "@langchain/core/messages";
 import { FastifyReply } from "fastify";
+import { DuckDuckGoSearch } from "@langchain/community/tools/duckduckgo_search";
+import { AgentExecutor, createOpenAIToolsAgent } from "langchain/agents";
+import { pull } from "langchain/hub";
 
 export interface IMessage {
     role: 'human' | 'ai' | 'system',
     content: string
+}
+
+export interface IRequestBody {
+    messages: IMessage[],
+    gptModel: string,
+    systemPrompt: string,
 }
 
 export interface IResponseBody {
@@ -77,28 +86,30 @@ export const getChatMemory = (messages: IMessage[]) => {
     return { chatMemory, currContent }
 }
 
-export const chatModel = new ChatOpenAI({
-    apiKey: process.env.API_KEY,
-    model: 'gpt-3.5-turbo',
-    temperature: 0.8,
-    streaming: true,
-    // callbacks: []
-})
-
 export const getAnswer = async (
-    messages: IMessage[], 
+    reqBody: IRequestBody,
     reply: FastifyReply
-) => {
+): Promise<void> => {
+
+    const {messages, gptModel, systemPrompt} = reqBody
 
     const {
         chatMemory,
         currContent
     } = getChatMemory(messages)
 
+    const chatModel = new ChatOpenAI({
+        apiKey: process.env.API_KEY,
+        model: gptModel,
+        temperature: 0.8,
+        streaming: true
+        // callbacks: []
+    })
+
     const chatPrompt
         = ChatPromptTemplate.fromMessages([
             SystemMessagePromptTemplate
-                .fromTemplate("You are a friendly assistant."),
+                .fromTemplate(systemPrompt),
             new MessagesPlaceholder('chat_history'),
             HumanMessagePromptTemplate
                 .fromTemplate("{input}"),
@@ -115,9 +126,8 @@ export const getAnswer = async (
         callbacks: [
             {
                 handleLLMNewToken(token: string) {
-                    // Write the token to the response stream
                     reply.raw.write(token);
-                    console.log(token)
+                    //console.log(token)
                 },
                 handleLLMEnd() {
                     // End the response stream
