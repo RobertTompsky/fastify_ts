@@ -9,7 +9,7 @@ import {
     SystemMessage
 } from "@langchain/core/messages";
 import type { BaseMessage } from "@langchain/core/messages";
-import { IMessage } from "../getAnswer";
+import { IMessage } from "../createConversationChain";
 
 export function createChatMessagesFromStored(
     messages: IMessage[]

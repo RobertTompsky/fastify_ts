@@ -1,8 +1,8 @@
-import {
-    IRequestBody,
-    getAnswer
-} from "@/chatGPT/getAnswer";
-import { Redis } from "@upstash/redis";
+import { 
+    IRequestBody, 
+    getChatMemory, 
+    createConversationChain 
+} from "@/chatGPT/createConversationChain";
 import {
     FastifyInstance,
     FastifyReply,
@@ -34,8 +34,31 @@ export const sendMessage =
                 reply: FastifyReply
             ) => {
                 try {
-                    setHeaders(reply); // Добавляем заголовок для CORS
-                    await getAnswer(request.body, reply)
+                    const { messages } = request.body
+                    const { currContent } = getChatMemory(messages)
+                    setHeaders(reply);
+
+                    const chain = await createConversationChain(request.body)
+
+                    await chain.invoke({
+                        input: currContent,
+                        callbacks: [
+                            {
+                                handleLLMNewToken(token: string) {
+                                    reply.raw.write(token);
+                                    //console.log(token)
+                                },
+                                handleLLMEnd() {
+                                    // End the response stream
+                                    reply.raw.end();
+                                },
+                                handleError(error: Error) {
+                                    console.error(error);
+                                    reply.code(500).send('Ошибка')
+                                },
+                            },
+                        ]
+                    })
 
                 } catch (error) {
                     console.log(error)

@@ -6,7 +6,7 @@ import {
     SystemMessagePromptTemplate,
 } from "@langchain/core/prompts";
 import {
-    BufferWindowMemory,
+    BufferMemory,
     ChatMessageHistory
 } from "langchain/memory";
 import { ChatOpenAI } from "@langchain/openai";
@@ -17,10 +17,10 @@ import {
     SystemMessage
 } from "@langchain/core/messages";
 import type { BaseMessage } from "@langchain/core/messages";
-import { FastifyReply } from "fastify";
 import { DuckDuckGoSearch } from "@langchain/community/tools/duckduckgo_search";
-import { AgentExecutor, createOpenAIToolsAgent } from "langchain/agents";
-import { pull } from "langchain/hub";
+import { AgentExecutor, createOpenAIToolsAgent, createToolCallingAgent } from "langchain/agents";
+import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
+import { UpstashRedisCache } from "@langchain/community/caches/upstash_redis";
 
 export interface IMessage {
     role: 'human' | 'ai' | 'system',
@@ -54,14 +54,19 @@ export function createChatMessagesFromStored(
     });
 }
 
+const cache = new UpstashRedisCache({
+    config: {
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN
+    },
+});
+
 export const extractLastQuestion = (messages: IMessage[]) => {
     const currContent = messages.length > 0 ?
         messages[messages.length - 1].content : ''
 
     const previousMessages = messages
         .slice(0, messages.length - 1)
-
-    console.log(currContent)
 
     return { currContent, previousMessages }
 }
@@ -72,37 +77,36 @@ export const getChatMemory = (messages: IMessage[]) => {
         previousMessages
     } = extractLastQuestion(messages)
 
-    const chatMemory = new BufferWindowMemory({
+    const chatMemory = new BufferMemory({
         chatHistory: new ChatMessageHistory(
             createChatMessagesFromStored(
                 previousMessages
             )
         ),
         memoryKey: 'chat_history',
-        k: 5,
         returnMessages: true
     })
 
     return { chatMemory, currContent }
 }
 
-export const getAnswer = async (
-    reqBody: IRequestBody,
-    reply: FastifyReply
-): Promise<void> => {
+export const createConversationChain = async (
+    reqBody: IRequestBody
+) => {
+    const { 
+        messages, 
+        gptModel, 
+        systemPrompt 
+    } = reqBody
 
-    const {messages, gptModel, systemPrompt} = reqBody
-
-    const {
-        chatMemory,
-        currContent
-    } = getChatMemory(messages)
+    const { chatMemory } = getChatMemory(messages)
 
     const chatModel = new ChatOpenAI({
         apiKey: process.env.API_KEY,
         model: gptModel,
-        temperature: 0.8,
-        streaming: true
+        temperature: 1.2,
+        streaming: true,
+        cache
         // callbacks: []
     })
 
@@ -115,30 +119,43 @@ export const getAnswer = async (
                 .fromTemplate("{input}"),
         ]);
 
+    /* 
+    const search = new TavilySearchResults({
+        apiKey: process.env.TAVILY_API_KEY,
+        maxResults: 1
+    })
+
+    const tools = [search]
+
+    const agent = createToolCallingAgent({
+        llm: chatModel,
+        tools,
+        prompt: chatPrompt
+    })
+
+    const agentExecutor = new AgentExecutor({
+        agent,
+        tools,
+        memory: chatMemory,
+        returnIntermediateSteps: false
+    });
+
+    const stream = await agentExecutor.stream({
+        input: currContent
+    })
+
+    for await (const chunk of stream) {
+        const token = JSON.stringify(chunk, null, 2)
+        reply.raw.write(token)
+        console.log(token)
+    }
+    */
+
     const BufferHistoryChain = new ConversationChain({
         llm: chatModel,
         prompt: chatPrompt,
         memory: chatMemory
     });
 
-    await BufferHistoryChain.invoke({
-        input: currContent,
-        callbacks: [
-            {
-                handleLLMNewToken(token: string) {
-                    reply.raw.write(token);
-                    //console.log(token)
-                },
-                handleLLMEnd() {
-                    // End the response stream
-                    reply.raw.end();
-                },
-                handleError(error: Error) {
-                    console.error(error);
-                    reply.raw.write('data: Error occurred\n\n');
-                    reply.raw.end();
-                },
-            },
-        ]
-    })
+    return BufferHistoryChain
 }
