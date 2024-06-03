@@ -1,9 +1,6 @@
 import { ConversationChain } from "langchain/chains";
 import {
     ChatPromptTemplate,
-    HumanMessagePromptTemplate,
-    MessagesPlaceholder,
-    SystemMessagePromptTemplate,
 } from "@langchain/core/prompts";
 import {
     BufferMemory,
@@ -17,8 +14,7 @@ import {
     SystemMessage
 } from "@langchain/core/messages";
 import type { BaseMessage } from "@langchain/core/messages";
-import { DuckDuckGoSearch } from "@langchain/community/tools/duckduckgo_search";
-import { AgentExecutor, createOpenAIToolsAgent, createToolCallingAgent } from "langchain/agents";
+import { AgentExecutor, createToolCallingAgent } from "langchain/agents";
 import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
 import { UpstashRedisCache } from "@langchain/community/caches/upstash_redis";
 import { Calculator } from "@langchain/community/tools/calculator";
