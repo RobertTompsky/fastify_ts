@@ -21,6 +21,8 @@ import { DuckDuckGoSearch } from "@langchain/community/tools/duckduckgo_search";
 import { AgentExecutor, createOpenAIToolsAgent, createToolCallingAgent } from "langchain/agents";
 import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
 import { UpstashRedisCache } from "@langchain/community/caches/upstash_redis";
+import { Calculator } from "@langchain/community/tools/calculator";
+import { WikipediaQueryRun } from "@langchain/community/tools/wikipedia_query_run";
 
 export interface IMessage {
     role: 'human' | 'ai' | 'system',
@@ -87,16 +89,18 @@ export const getChatMemory = (messages: IMessage[]) => {
         returnMessages: true
     })
 
+    console.log(chatMemory.chatHistory)
+
     return { chatMemory, currContent }
 }
 
 export const createConversationChain = async (
     reqBody: IRequestBody
 ) => {
-    const { 
-        messages, 
-        gptModel, 
-        systemPrompt 
+    const {
+        messages,
+        gptModel,
+        systemPrompt
     } = reqBody
 
     const { chatMemory } = getChatMemory(messages)
@@ -112,20 +116,25 @@ export const createConversationChain = async (
 
     const chatPrompt
         = ChatPromptTemplate.fromMessages([
-            SystemMessagePromptTemplate
-                .fromTemplate(systemPrompt),
-            new MessagesPlaceholder('chat_history'),
-            HumanMessagePromptTemplate
-                .fromTemplate("{input}"),
+            ['system', `${systemPrompt}You may not need to use tools for every query - the user may just want to chat!`],
+            ["placeholder", "{chat_history}"],
+            ['human', "{input}"],
+            ["placeholder", "{agent_scratchpad}"],
         ]);
 
-    /* 
+    console.log(chatPrompt)
+
     const search = new TavilySearchResults({
         apiKey: process.env.TAVILY_API_KEY,
-        maxResults: 1
+        maxResults: 3
     })
 
-    const tools = [search]
+    const wiki = new WikipediaQueryRun({
+        topKResults: 3,
+        maxDocContentLength: 4000,
+    })
+
+    const tools = [search, wiki, new Calculator()]
 
     const agent = createToolCallingAgent({
         llm: chatModel,
@@ -137,20 +146,12 @@ export const createConversationChain = async (
         agent,
         tools,
         memory: chatMemory,
-        returnIntermediateSteps: false
+        //returnIntermediateSteps: false
     });
 
-    const stream = await agentExecutor.stream({
-        input: currContent
-    })
+    return agentExecutor
 
-    for await (const chunk of stream) {
-        const token = JSON.stringify(chunk, null, 2)
-        reply.raw.write(token)
-        console.log(token)
-    }
-    */
-
+    /*
     const BufferHistoryChain = new ConversationChain({
         llm: chatModel,
         prompt: chatPrompt,
@@ -158,4 +159,5 @@ export const createConversationChain = async (
     });
 
     return BufferHistoryChain
+    */
 }

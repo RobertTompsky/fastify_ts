@@ -38,8 +38,31 @@ export const sendMessage =
                     const { currContent } = getChatMemory(messages)
                     setHeaders(reply);
 
-                    const chain = await createConversationChain(request.body)
+                    const agent = await createConversationChain(request.body)
 
+                    const stream = agent.streamLog({
+                        input: currContent
+                    })
+                
+                    for await (const chunk of stream) {
+                        if (chunk.ops?.length > 0 && chunk.ops[0].op === "add") {
+                          const addOp = chunk.ops[0];
+                          if (
+                            addOp.path.startsWith("/logs/ChatOpenAI") &&
+                            typeof addOp.value === "string" &&
+                            addOp.value.length
+                          ) {
+                            reply.raw.write(addOp.value);
+                            console.log(addOp.value)
+                          }
+                        }
+                      }
+
+                    reply.raw.end();
+
+                    
+
+                    /*
                     await chain.invoke({
                         input: currContent,
                         callbacks: [
@@ -59,6 +82,7 @@ export const sendMessage =
                             },
                         ]
                     })
+                    */
 
                 } catch (error) {
                     console.log(error)
