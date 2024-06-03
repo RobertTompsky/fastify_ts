@@ -1,7 +1,7 @@
 import {
     IRequestBody,
     getAnswer
-} from "@/chatGPT/getAnswer";
+} from "@/chatGPT/createConversationChain";
 import { Redis } from "@upstash/redis";
 import {
     FastifyInstance,
