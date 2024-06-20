@@ -1,11 +1,8 @@
-import { FastifyServerOptions } from "fastify";
+import { FastifyRequest, FastifyServerOptions } from "fastify";
+import { File } from 'fastify-multer/lib/interfaces';
 
 export type AppOptions = Partial<FastifyServerOptions>;
 
-export type ErrorResponse = {
-    type: string,
-    properties: {
-        message: { type: string },
-        error?: { type: string }
-    }
+export interface CustomFastifyRequest extends FastifyRequest {
+    file?: File
 }

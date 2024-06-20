@@ -57,7 +57,7 @@ export function createChatMessagesFromStored(
 const cache = new UpstashRedisCache({
     config: {
         url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
     },
 });
 
@@ -106,7 +106,7 @@ export const createConversationChain = async (
         model: gptModel,
         temperature: 1.2,
         streaming: true,
-        cache
+        // cache
         // callbacks: []
     })
 
