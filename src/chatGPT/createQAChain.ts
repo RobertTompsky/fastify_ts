@@ -1,5 +1,3 @@
-import { CheerioWebBaseLoader } from "@langchain/community/document_loaders/web/cheerio";
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { OpenAIEmbeddings, ChatOpenAI } from "@langchain/openai";
 import {
     ChatPromptTemplate,
@@ -17,33 +15,10 @@ import {
 } from "@langchain/core/runnables";
 import { formatDocumentsAsString } from "langchain/util/document";
 import { UpstashRedisChatMessageHistory } from "@langchain/community/stores/message/upstash_redis";
-import { PineconeStore } from "@langchain/pinecone";
-import { getPineconeIndex } from "./utils/getPineconeIndex";
+import { getPineconeStore } from "./utils/getPineconeIndex";
 
-export const createQAChain = async (question: string) => {
-    /*
-    const loader = new CheerioWebBaseLoader(
-        "https://lilianweng.github.io/posts/2023-06-23-agent/"
-    );
-
-    const docs = await loader.load();
-
-    const textSplitter = new RecursiveCharacterTextSplitter({
-        chunkSize: 1000,
-        chunkOverlap: 200,
-    });
-
-    const splits = await textSplitter.splitDocuments(docs);
-    */
-
-    const vectorStore = await PineconeStore.fromExistingIndex(
-        new OpenAIEmbeddings({ apiKey: process.env.API_KEY }),
-        {
-            pineconeIndex: getPineconeIndex(),
-            maxConcurrency: 5
-        }
-    );
-
+export const createQAChain = async () => {
+    const vectorStore = await getPineconeStore()
     const retriever = vectorStore.asRetriever();
 
     const llm = new ChatOpenAI({

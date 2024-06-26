@@ -36,6 +36,7 @@ export const sendMessage =
                 try {
                     const { messages } = request.body
                     const { currContent } = getChatMemory(messages)
+                    
                     setHeaders(reply);
 
                     const chain = await createConversationChain(request.body)

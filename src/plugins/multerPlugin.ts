@@ -1,17 +1,18 @@
-import { FastifyRequest } from 'fastify';
 import multer from 'fastify-multer'
-import { File, FileFilter, FileFilterCallback } from 'fastify-multer/lib/interfaces';
+import { FileFilter } from 'fastify-multer/lib/interfaces';
+import path from 'path';
 
 const storage = multer.diskStorage({
-    destination: function (_req: FastifyRequest, _file: File, cb) {
+    destination: function (_req, _file, cb) {
         cb(null, './uploads/');
     },
-    filename: function (_req: FastifyRequest, _file: File, cb) {
-        cb(null, _file.originalname);
+    filename: function (_req, file, cb) {  
+        cb(null, 'file' + path.extname(file.originalname));
+        //cb(null, file.filename);
     }
 });
 
-const fileFilter: FileFilter = (_req: FastifyRequest, file: File, cb: FileFilterCallback) => {
+const fileFilter: FileFilter = (_req, file, cb) => {
     // Reject files with a mimetype other than 'image/png' or 'image/jpeg'
     if (
         file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||

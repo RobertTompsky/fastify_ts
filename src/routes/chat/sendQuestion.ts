@@ -19,7 +19,7 @@ export const sendQuestion =
                 try {
                     const { question } = request.body
 
-                    const chain = await createQAChain(question)
+                    const chain = await createQAChain()
 
                     const result = await chain.invoke(
                         { question },
